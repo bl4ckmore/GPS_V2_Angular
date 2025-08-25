@@ -1,0 +1,23 @@
+<div class="signin-wrapper">
+  <mat-card class="signin-card">
+    <h1>Sign In</h1>
+    <p class="subtitle">Use your WhatsGPS account to continue.</p>
+
+    <form [formGroup]="form" (ngSubmit)="submit()">
+      <mat-form-field appearance="outline" class="full">
+        <mat-label>Username</mat-label>
+        <input matInput formControlName="name" autocomplete="username">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="full">
+        <mat-label>Password</mat-label>
+        <input matInput type="password" formControlName="password" autocomplete="current-password">
+      </mat-form-field>
+
+      <button mat-raised-button color="primary" class="full" [disabled]="loading">
+        {{ loading ? 'Signing in...' : 'Sign In' }}
+      </button>
+      <div class="error" *ngIf="error">{{ error }}</div>
+    </form>
+  </mat-card>
+</div>

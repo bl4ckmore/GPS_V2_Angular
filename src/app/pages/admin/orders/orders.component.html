@@ -1,0 +1,39 @@
+<mat-card>
+  <h2>Orders</h2>
+
+  <form class="row" [formGroup]="form" (ngSubmit)="create()">
+    <mat-form-field appearance="outline">
+      <mat-label>Customer</mat-label>
+      <input matInput formControlName="customerName">
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Total Amount</mat-label>
+      <input matInput type="number" formControlName="totalAmount">
+    </mat-form-field>
+
+    <button mat-raised-button color="primary">Create</button>
+  </form>
+
+  <div class="loading" *ngIf="loading"><mat-spinner diameter="30"></mat-spinner></div>
+
+  <table mat-table [dataSource]="rows" class="mat-elevation-z1" *ngIf="!loading">
+    <ng-container matColumnDef="id">
+      <th mat-header-cell *matHeaderCellDef>ID</th>
+      <td mat-cell *matCellDef="let r">{{ r.id }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="customerName">
+      <th mat-header-cell *matHeaderCellDef>Customer</th>
+      <td mat-cell *matCellDef="let r">{{ r['customerName'] || r['customer'] || '-' }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="totalAmount">
+      <th mat-header-cell *matHeaderCellDef>Total</th>
+      <td mat-cell *matCellDef="let r">{{ (r['totalAmount'] ?? r['total'] ?? 0) | currency }}</td>
+    </ng-container>
+
+    <tr mat-header-row *matHeaderRowDef="cols"></tr>
+    <tr mat-row *matRowDef="let row; columns: cols"></tr>
+  </table>
+</mat-card>

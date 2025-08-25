@@ -1,0 +1,14 @@
+.signin-wrapper {
+  min-height: calc(100vh - 72px);
+  display: grid;
+  place-items: center;
+  background: #0f172a;
+}
+.signin-card {
+  width: 100%;
+  max-width: 420px;
+  padding: 28px;
+}
+.subtitle { color:#64748b;margin-top:-8px }
+.full { width:100% }
+.error { color:#ef4444; margin-top:12px }
