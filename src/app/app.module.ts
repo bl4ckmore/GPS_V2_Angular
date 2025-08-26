@@ -1,29 +1,27 @@
-// src/app/app.module.ts
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { HttpClientModule } from '@angular/common/http';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-
+import { HTTP_INTERCEPTORS } from '@angular/common/http';
+import { AuthInterceptor } from './core/auth/auth.interceptor';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
+import { JwtInterceptor } from './core/auth/jwt.interceptor';
 
-// Components that exist in your structure
+
+// Components
 import { HeaderComponent } from './components/header/header.component';
 import { FooterComponent } from './components/footer/footer.component';
 import { ProductCardComponent } from './components/product-card/product-card.component';
-//import { OrderSummaryComponent } from './components/order-summary/order-summary.component';
-//import { ProductImageGalleryComponent } from './components/product-image-gallery/product-image-gallery.component';
 
 // Pages
 import { HomeComponent } from './pages/home/home.component';
 import { CartComponent } from './pages/cart/cart.component';
 import { ProductListComponent } from './pages/product-list/product-list.component';
 import { ProductDetailComponent } from './pages/product-detail/product-detail.component';
-//import { CheckoutComponent } from './pages/checkout/checkout.component';
-//import { OrderHistoryComponent } from './pages/order-history/order-history.component';
 
-// Angular Material - existing ones you use
+// Angular Material Modules
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -32,12 +30,16 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
-
-// Additional Angular Material for the new home page
 import { MatMenuModule } from '@angular/material/menu';
 import { MatRippleModule } from '@angular/material/core';
 
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
+
+
+import { SignInComponent } from './pages/sign-in/sign-in.component';
+
+
+
 
 @NgModule({
   declarations: [
@@ -45,14 +47,11 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
     HeaderComponent,
     FooterComponent,
     ProductCardComponent,
-    //OrderSummaryComponent,
-    //ProductImageGalleryComponent,
     HomeComponent,
     CartComponent,
     ProductListComponent,
     ProductDetailComponent,
-   // CheckoutComponent,
-   // OrderHistoryComponent
+    SignInComponent
   ],
   imports: [
     BrowserModule,
@@ -61,8 +60,8 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
     FormsModule,
     ReactiveFormsModule,
     AppRoutingModule,
-    
-    // Material - your existing modules
+
+    // Material Modules
     MatToolbarModule,
     MatIconModule,
     MatFormFieldModule,
@@ -71,17 +70,13 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
     MatCardModule,
     MatProgressSpinnerModule,
     MatTooltipModule,
-    
-    // Additional Material modules for home page
-    MatMenuModule,        // For dropdown menus
-    MatRippleModule,      // For ripple effects on buttons
-    
-    // MatTooltipModule is already imported above for tooltips
-    // Note: MatFormFieldModule and MatInputModule are already included above for search
+    MatMenuModule,
+    MatRippleModule
   ],
-  providers: [
-    provideAnimationsAsync()
-  ],
+ providers: [
+  provideAnimationsAsync(),
+  { provide: HTTP_INTERCEPTORS, useClass: JwtInterceptor, multi: true }
+],
   bootstrap: [AppComponent]
 })
-export class AppModule {}
+export class AppModule { }
