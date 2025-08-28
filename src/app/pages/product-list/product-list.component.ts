@@ -509,14 +509,16 @@ export class ProductListComponent implements OnInit, OnDestroy {
   }
 
   getDefaultImage(category: string): string {
-    const imageMap: { [key: string]: string } = {
-      fleet: '/assets/images/default-fleet-tracker.jpg',
-      obd: '/assets/images/default-obd-tracker.jpg',
-      asset: '/assets/images/default-asset-tracker.jpg',
-      personal: '/assets/images/default-personal-tracker.jpg'
-    };
-    return imageMap[category] || '/assets/images/default-gps-tracker.jpg';
-  }
+  const imageMap: Record<string, string> = {
+    fleet: 'assets/images/default-fleet-tracker.jpg',
+    obd: 'assets/images/default-obd-tracker.jpg',
+    asset: 'assets/images/default-asset-tracker.jpg',
+    // only keep keys for files that actually exist
+    personal: 'assets/images/default-asset-tracker.jpg'
+  };
+  // final fallback MUST exist
+  return imageMap[category] || 'assets/images/default-asset-tracker.jpg';
+}
 
   onImageError(event: Event): void {
     const img = event.target as HTMLImageElement;
