@@ -1,15 +1,36 @@
 import { Component, OnInit, OnDestroy, HostListener } from '@angular/core';
 import { Router } from '@angular/router';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import {
   trigger, style, transition, animate, query, stagger
 } from '@angular/animations';
-import { AuthService } from '../../core/auth/auth.service'; // <-- check this path
+import { AuthService } from '../../core/auth/auth.service';
+import { ProductService } from '../../services/product.service';
+import { CartService } from '../../services/cart.service';
 
-interface ProductCard {
-  title: string;
+interface Product {
+  id: number;
+  name: string;
   description: string;
-  image: string;
-  link: string;
+  price: number;
+  imageUrl: string;
+  category: string;
+  stock: number;
+  features?: string[];
+  rating?: number;
+  reviewCount?: number;
+  isActive: boolean;
+  createdAt: Date;
+}
+
+interface ProductCategory {
+  id: number;
+  name: string;
+  description: string;
+  slug: string;
+  icon: string;
+  productCount: number;
+  priceFrom: number;
 }
 
 interface HeroSlide {
@@ -18,13 +39,21 @@ interface HeroSlide {
   description: string;
   buttonText: string;
   buttonLink: string;
+  buttonIcon?: string;
   secondaryButton?: string;
   secondaryLink?: string;
+  secondaryIcon?: string;
   backgroundImage: string;
   badge?: string;
   badgeIcon?: string;
   features?: { icon: string; text: string }[];
   stats?: { number: string; label: string }[];
+}
+
+interface NavigationOption {
+  name: string;
+  link: string;
+  icon: string;
 }
 
 @Component({
@@ -57,27 +86,40 @@ interface HeroSlide {
   ]
 })
 export class HomeComponent implements OnInit, OnDestroy {
-  /** Expose AuthService to template (used as `auth` in your HTML) */
-  constructor(public auth: AuthService, private router: Router) {}
+  constructor(
+    public auth: AuthService,
+    private router: Router,
+    private productService: ProductService,
+    private cartService: CartService,
+    private snackBar: MatSnackBar
+  ) {}
 
-  // --- Slider state ---
+  // --- State Management ---
+  loading = true;
   currentSlide = 0;
   autoPlay = true;
   slideInterval = 8000;
   isMobile = false;
+  cartItemCount = 0;
+  totalProductCount = 0;
   private slideTimer: any;
+
+  // --- Data ---
+  featuredProducts: Product[] = [];
+  productCategories: ProductCategory[] = [];
 
   // --- Hero slides ---
   heroSlides: HeroSlide[] = [
     {
       title: 'Professional Fleet Management',
       subtitle: 'Enterprise GPS Tracking Solutions',
-      description:
-        'Advanced fleet tracking with real-time monitoring, comprehensive analytics, and 24/7 support. Trusted by thousands of businesses worldwide for mission-critical operations.',
-      buttonText: 'View Solutions',
-      buttonLink: '/products/fleet-tracker',
+      description: 'Advanced fleet tracking with real-time monitoring, comprehensive analytics, and 24/7 support. Trusted by thousands of businesses worldwide for mission-critical operations.',
+      buttonText: 'Shop Fleet Trackers',
+      buttonLink: '/products?category=fleet',
+      buttonIcon: 'local_shipping',
       secondaryButton: 'Request Demo',
       secondaryLink: '/demo',
+      secondaryIcon: 'play_arrow',
       backgroundImage: 'linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%)',
       badge: 'Enterprise Grade',
       badgeIcon: 'verified',
@@ -90,10 +132,10 @@ export class HomeComponent implements OnInit, OnDestroy {
     {
       title: 'Vehicle Diagnostics & Tracking',
       subtitle: 'OBD-II GPS Solutions',
-      description:
-        'Complete vehicle monitoring with diagnostic capabilities, fuel tracking, and driver behavior analysis. Professional-grade solutions for fleet optimization.',
+      description: 'Complete vehicle monitoring with diagnostic capabilities, fuel tracking, and driver behavior analysis. Professional-grade solutions for fleet optimization.',
       buttonText: 'Explore OBD Trackers',
-      buttonLink: '/products/obd-tracker',
+      buttonLink: '/products?category=obd',
+      buttonIcon: 'settings',
       backgroundImage: 'linear-gradient(135deg, #065f46 0%, #10b981 100%)',
       badge: 'Most Popular',
       badgeIcon: 'trending_up',
@@ -106,10 +148,10 @@ export class HomeComponent implements OnInit, OnDestroy {
     {
       title: 'Asset Security & Tracking',
       subtitle: 'Protect Your Valuable Assets',
-      description:
-        'High-precision GPS tracking for equipment, machinery, and valuable assets. Military-grade security with worldwide coverage and instant alerts.',
-      buttonText: 'Asset Solutions',
-      buttonLink: '/products/asset-tracker',
+      description: 'High-precision GPS tracking for equipment, machinery, and valuable assets. Military-grade security with worldwide coverage and instant alerts.',
+      buttonText: 'Shop Asset Trackers',
+      buttonLink: '/products?category=asset',
+      buttonIcon: 'security',
       backgroundImage: 'linear-gradient(135deg, #7c2d12 0%, #ea580c 100%)',
       badge: 'High Security',
       badgeIcon: 'security',
@@ -121,62 +163,76 @@ export class HomeComponent implements OnInit, OnDestroy {
     }
   ];
 
-  // --- Top products ---
-  topProducts: ProductCard[] = [
-    {
-      title: 'Enterprise Fleet Management',
-      description:
-        'Mission-critical fleet tracking with advanced analytics, real-time monitoring, and enterprise-grade security. Trusted by Fortune 500 companies worldwide.',
-      image: 'assets/images/fleet-tracker.png',
-      link: '/products/fleet-tracker'
-    },
-    {
-      title: 'Professional OBD Tracker',
-      description:
-        'Military-grade OBD-II tracker with comprehensive vehicle diagnostics, predictive maintenance, and fuel optimization for maximum operational efficiency.',
-      image: 'assets/images/obd-tracker.png',
-      link: '/products/obd-tracker'
-    },
-    {
-      title: 'High-Security Asset Tracker',
-      description:
-        'Ultra-secure GPS tracking for critical assets with 90-day battery, global coverage, and military-grade encryption. ISO 27001 certified.',
-      image: 'assets/images/asset-tracker.png',
-      link: '/products/asset-tracker'
-    }
+  // --- Navigation Menus ---
+  gpsTrackerOptions: NavigationOption[] = [
+    { name: 'Fleet Trackers', link: '/products?category=fleet', icon: 'local_shipping' },
+    { name: 'OBD Trackers', link: '/products?category=obd', icon: 'settings' },
+    { name: 'Asset Trackers', link: '/products?category=asset', icon: 'security' },
+    { name: 'Personal Trackers', link: '/products?category=personal', icon: 'person_pin_circle' },
+    { name: 'All Products', link: '/products', icon: 'inventory' }
   ];
 
-  // --- Menus (used in navbar dropdowns) ---
-  gpsTrackerOptions = [
-    { name: 'Fleet Management', link: '/products/fleet-tracker' },
-    { name: 'OBD Trackers', link: '/products/obd-tracker' },
-    { name: 'Asset Trackers', link: '/products/asset-tracker' },
-    { name: 'Personal Trackers', link: '/products/personal-tracker' },
-    { name: 'All Products', link: '/products' }
-  ];
-
-  solutionsOptions = [
-    { name: 'Fleet Management', link: '/solutions/fleet-management' },
-    { name: 'Asset Tracking', link: '/solutions/asset-tracking' },
-    { name: 'Logistics Solutions', link: '/solutions/logistics' },
-    { name: 'Compliance Reporting', link: '/solutions/compliance' }
-  ];
-
-  aboutOptions = [
-    { name: 'About SEEWORLD', link: '/about' },
-    { name: 'Our Technology', link: '/technology' },
-    { name: 'Case Studies', link: '/case-studies' },
-    { name: 'Contact Us', link: '/contact' }
+  solutionsOptions: NavigationOption[] = [
+    { name: 'Fleet Management', link: '/solutions/fleet-management', icon: 'local_shipping' },
+    { name: 'Asset Tracking', link: '/solutions/asset-tracking', icon: 'security' },
+    { name: 'Logistics Solutions', link: '/solutions/logistics', icon: 'local_shipping' },
+    { name: 'Compliance Reporting', link: '/solutions/compliance', icon: 'assessment' }
   ];
 
   // ===== Lifecycle =====
   ngOnInit(): void {
     this.checkIfMobile();
+    this.initializeData();
     this.startAutoSlide();
+    this.subscribeToCartUpdates();
   }
 
   ngOnDestroy(): void {
     if (this.slideTimer) clearInterval(this.slideTimer);
+  }
+
+  private async initializeData(): Promise<void> {
+    this.loading = true;
+    try {
+      // Load featured products
+      await this.loadFeaturedProducts();
+      
+      // Load product categories
+      await this.loadProductCategories();
+      
+      // Get total product count
+      this.totalProductCount = await this.productService.getTotalProductCount();
+      
+    } catch (error) {
+      console.error('Error loading home page data:', error);
+      this.snackBar.open('Some content may not be up to date.', 'Close', {
+        duration: 3000
+      });
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  private async loadFeaturedProducts(): Promise<void> {
+    try {
+      this.featuredProducts = await this.productService.getFeaturedProducts(6);
+    } catch (error) {
+      console.error('Error loading featured products:', error);
+    }
+  }
+
+  private async loadProductCategories(): Promise<void> {
+    try {
+      this.productCategories = await this.productService.getProductCategories();
+    } catch (error) {
+      console.error('Error loading product categories:', error);
+    }
+  }
+
+  private subscribeToCartUpdates(): void {
+    this.cartService.cartItemCount$.subscribe(count => {
+      this.cartItemCount = count;
+    });
   }
 
   // ===== Responsive =====
@@ -215,10 +271,54 @@ export class HomeComponent implements OnInit, OnDestroy {
     }
   }
 
+  // ===== E-commerce Actions =====
+  async addToCart(product: Product, event: Event): Promise<void> {
+    event.stopPropagation();
+    
+    if (product.stock === 0) {
+      this.snackBar.open('Product is out of stock', 'Close', {
+        duration: 3000,
+        panelClass: ['warning-snackbar']
+      });
+      return;
+    }
+
+    const isLoggedIn = this.auth.isLoggedIn$.value;
+    if (!isLoggedIn) {
+      this.snackBar.open('Please sign in to add items to cart', 'Sign In', {
+        duration: 5000
+      }).onAction().subscribe(() => {
+        this.router.navigate(['/sign-in']);
+      });
+      return;
+    }
+
+    try {
+      await this.cartService.addToCart(product.id, 1);
+      this.snackBar.open(`${product.name} added to cart`, 'View Cart', {
+        duration: 3000,
+        panelClass: ['success-snackbar']
+      }).onAction().subscribe(() => {
+        this.navigateTo('/cart');
+      });
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      this.snackBar.open('Failed to add item to cart', 'Close', {
+        duration: 3000,
+        panelClass: ['error-snackbar']
+      });
+    }
+  }
+
+  performSearch(query: string): void {
+    if (!query.trim()) return;
+    this.navigateTo(`/products?search=${encodeURIComponent(query)}`);
+  }
+
   // ===== Navigation helpers =====
   navigateTo(route: string): void {
     if (!route) return;
-    // supports absolute paths and full URLs
+    
     if (/^https?:\/\//i.test(route)) {
       window.location.href = route;
     } else {
@@ -226,13 +326,17 @@ export class HomeComponent implements OnInit, OnDestroy {
     }
   }
 
-  // ===== Icons for product cards =====
+  // ===== Utility Methods =====
+  getStarArray(rating: number): number[] {
+    return Array(Math.floor(rating)).fill(0);
+  }
+
   getProductIcon(productTitle: string): string {
     const t = (productTitle || '').toLowerCase();
     if (t.includes('fleet')) return 'local_shipping';
     if (t.includes('obd')) return 'settings';
     if (t.includes('asset')) return 'security';
-    if (t.includes('camera')) return 'videocam';
+    if (t.includes('personal')) return 'person_pin_circle';
     return 'gps_fixed';
-    }
+  }
 }

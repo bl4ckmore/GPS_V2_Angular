@@ -1,23 +1,177 @@
 <div class="signin-wrapper">
-  <mat-card class="signin-card">
-    <h1>Sign In</h1>
-    <p class="subtitle">Use your WhatsGPS account to continue.</p>
+  <!-- Background Elements -->
+  <div class="background-overlay"></div>
+  <div class="background-pattern"></div>
+  
+  <!-- Main Content -->
+  <div class="signin-container">
+    <!-- Left Side - Branding -->
+    <div class="signin-branding">
+      <div class="brand-content">
+        <div class="brand-logo" (click)="navigateToHome()">
+          <mat-icon class="logo-icon">navigation</mat-icon>
+          <span class="logo-text">SEEWORLD</span>
+        </div>
+        <h2 class="brand-title">Professional GPS Solutions</h2>
+        <p class="brand-description">
+          Secure access to your enterprise GPS tracking dashboard. 
+          Manage your fleet, monitor assets, and access real-time analytics 
+          with military-grade security.
+        </p>
+        
+        <div class="trust-indicators">
+          <div class="trust-item">
+            <mat-icon>verified_user</mat-icon>
+            <span>Enterprise Security</span>
+          </div>
+          <div class="trust-item">
+            <mat-icon>shield</mat-icon>
+            <span>ISO 27001 Certified</span>
+          </div>
+          <div class="trust-item">
+            <mat-icon>support_agent</mat-icon>
+            <span>24/7 Support</span>
+          </div>
+        </div>
 
-    <form [formGroup]="form" (ngSubmit)="submit()">
-      <mat-form-field appearance="outline" class="full">
-        <mat-label>Username</mat-label>
-        <input matInput formControlName="name" autocomplete="username">
-      </mat-form-field>
+        <!-- Quick Navigation Links -->
+        <div class="quick-nav">
+          <button mat-button class="nav-link" (click)="navigateToProducts()">
+            <mat-icon>inventory</mat-icon>
+            Browse Products
+          </button>
+          <button mat-button class="nav-link" (click)="navigateToDemo()">
+            <mat-icon>play_circle</mat-icon>
+            Request Demo
+          </button>
+        </div>
+      </div>
+    </div>
 
-      <mat-form-field appearance="outline" class="full">
-        <mat-label>Password</mat-label>
-        <input matInput type="password" formControlName="password" autocomplete="current-password">
-      </mat-form-field>
+    <!-- Right Side - Sign-In Form -->
+    <div class="signin-form-section">
+      <mat-card class="signin-card">
+        <div class="card-header">
+          <div class="header-icon">
+            <mat-icon>account_circle</mat-icon>
+          </div>
+          <h1 class="signin-title">Welcome Back</h1>
+          <p class="signin-subtitle">Sign in to access your GPS tracking dashboard</p>
+        </div>
 
-      <button mat-raised-button color="primary" class="full" [disabled]="loading">
-        {{ loading ? 'Signing in...' : 'Sign In' }}
-      </button>
-      <div class="error" *ngIf="error">{{ error }}</div>
-    </form>
-  </mat-card>
+        <form [formGroup]="form" (ngSubmit)="submit()" class="signin-form" (keydown)="onKeydown($event)">
+          <!-- Username Field -->
+          <div class="form-group">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Username</mat-label>
+              <mat-icon matPrefix class="input-icon">person</mat-icon>
+              <input 
+                matInput 
+                formControlName="name" 
+                autocomplete="username"
+                class="form-input"
+                placeholder="Enter your username"
+                #usernameInput>
+              <mat-error *ngIf="form.get('name')?.hasError('required') && form.get('name')?.touched">
+                Username is required
+              </mat-error>
+              <mat-error *ngIf="form.get('name')?.hasError('minlength') && form.get('name')?.touched">
+                Username must be at least 2 characters
+              </mat-error>
+            </mat-form-field>
+          </div>
+
+          <!-- Password Field -->
+          <div class="form-group">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Password</mat-label>
+              <mat-icon matPrefix class="input-icon">lock</mat-icon>
+              <input 
+                matInput 
+                [type]="hidePassword ? 'password' : 'text'"
+                formControlName="password" 
+                autocomplete="current-password"
+                class="form-input"
+                placeholder="Enter your password">
+              <button 
+                mat-icon-button 
+                matSuffix 
+                type="button"
+                (click)="togglePasswordVisibility()"
+                class="password-toggle"
+                [attr.aria-label]="'Toggle password visibility'">
+                <mat-icon>{{hidePassword ? 'visibility' : 'visibility_off'}}</mat-icon>
+              </button>
+              <mat-error *ngIf="form.get('password')?.hasError('required') && form.get('password')?.touched">
+                Password is required
+              </mat-error>
+              <mat-error *ngIf="form.get('password')?.hasError('minlength') && form.get('password')?.touched">
+                Password must be at least 4 characters
+              </mat-error>
+            </mat-form-field>
+          </div>
+
+          <!-- Remember Me & Forgot Password -->
+          <div class="form-options">
+            <mat-checkbox class="remember-me" color="primary" [(ngModel)]="rememberMe" [ngModelOptions]="{standalone: true}">
+              Remember me
+            </mat-checkbox>
+            <button type="button" mat-button class="forgot-password" (click)="openForgotPassword()">
+              Forgot password?
+            </button>
+          </div>
+
+          <!-- Error Display -->
+          <div class="error-container" *ngIf="error" [@errorState]>
+            <mat-icon class="error-icon">error</mat-icon>
+            <span class="error-message">{{ error }}</span>
+          </div>
+
+          <!-- Submit Button -->
+          <button 
+            mat-raised-button 
+            color="primary" 
+            class="signin-button"
+            type="submit"
+            [disabled]="form.invalid || loading">
+            <mat-spinner 
+              *ngIf="loading" 
+              diameter="20" 
+              class="button-spinner">
+            </mat-spinner>
+            <mat-icon *ngIf="!loading">login</mat-icon>
+            <span>{{ loading ? 'Signing In...' : 'Sign In' }}</span>
+          </button>
+        </form>
+
+        <!-- Footer -->
+        <div class="card-footer">
+          <div class="support-info">
+            <mat-icon class="support-icon">help_outline</mat-icon>
+            <span>Need help? <button mat-button class="support-link" (click)="openSupport()">Contact Support</button></span>
+          </div>
+          
+          <!-- Alternative Actions -->
+          <div class="alt-actions">
+            <button mat-button class="alt-button" (click)="navigateToDemo()">
+              <mat-icon>play_circle</mat-icon>
+              Try Demo Instead
+            </button>
+            <button mat-button class="alt-button" (click)="navigateToHome()">
+              <mat-icon>home</mat-icon>
+              Back to Home
+            </button>
+          </div>
+        </div>
+      </mat-card>
+    </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" *ngIf="loading">
+    <div class="loading-content">
+      <mat-spinner diameter="40"></mat-spinner>
+      <p>Authenticating...</p>
+    </div>
+  </div>
 </div>

@@ -1,10 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
-
-import { Product } from '../../models';
-import { ProductService } from '../../services/product.service';   // ✅ correct path
-import { CartService } from '../../services/cart.service';         // ✅ correct path
+import { Product, ProductService } from '..//../services/product.service';
+import { CartService } from '..//..//services/cart.service';
+import { AuthService } from '../../core/auth/auth.service';
 
 @Component({
   selector: 'app-product-detail',
@@ -14,100 +13,105 @@ import { CartService } from '../../services/cart.service';         // ✅ correc
 export class ProductDetailComponent implements OnInit {
   product: Product | null = null;
   relatedProducts: Product[] = [];
-  quantity = 1;
   loading = true;
+  error: string | null = null;
+  quantity = 1;
+  maxQuantity = 10;
+  addingToCart = false;
 
   constructor(
     private route: ActivatedRoute,
     private router: Router,
     private productService: ProductService,
     private cartService: CartService,
+    private auth: AuthService,
     private snackBar: MatSnackBar
   ) {}
 
   ngOnInit(): void {
     this.route.params.subscribe(params => {
-      const id = params['id'];
-      if (id) this.loadProduct(id);
-    });
-  }
-
-  private loadProduct(id: string): void {
-    this.loading = true;
-    this.productService.getProduct(id).subscribe({
-      next: (product) => {
-        this.product = product;
-        this.loadRelatedProducts(id);
-        this.loading = false;
-      },
-      error: (err) => {
-        console.error('Error loading product:', err);
-        this.product = null;
+      const productId = Number(params['id']);
+      if (productId && !isNaN(productId)) {
+        this.loadProduct(productId);
+      } else {
+        this.error = 'Invalid product ID';
         this.loading = false;
       }
     });
   }
 
-  private loadRelatedProducts(productId: string): void {
-    this.productService.getRelatedProducts(productId).subscribe({
-      next: products => (this.relatedProducts = products),
-      error: err => {
-        console.error('Error loading related products:', err);
-        this.relatedProducts = [];
-      }
-    });
+  private async loadProduct(id: number): Promise<void> {
+    try {
+      this.loading = true;
+      this.product = await this.productService.getProductById(id);
+      this.maxQuantity = Math.min(this.product.stock, 10);
+      
+      // Load related products
+      await this.loadRelatedProducts(this.product.category);
+    } catch (error: any) {
+      console.error('Error loading product:', error);
+      this.error = 'Failed to load product details';
+    } finally {
+      this.loading = false;
+    }
   }
 
-  addToCart(): void {
+  private async loadRelatedProducts(category: string): Promise<void> {
+    try {
+      const response = await this.productService.getProducts({ category, limit: 4 });
+      this.relatedProducts = response.products.filter(p => p.id !== this.product?.id);
+    } catch (error: any) {
+      console.error('Error loading related products:', error);
+      // Don't show error to user for related products
+    }
+  }
+
+  async addToCart(): Promise<void> {
     if (!this.product) return;
-    this.cartService.addToCart(this.product.id, this.quantity).subscribe({
-      next: () =>
-        this.snackBar.open('Added to cart successfully!', 'View Cart', { duration: 3000 }),
-      error: () =>
-        this.snackBar.open('Failed to add to cart', 'Close', { duration: 3000 })
-    });
+
+    this.addingToCart = true;
+    try {
+      await this.cartService.addToCart(this.product.id, this.quantity);
+      
+      this.snackBar.open(`${this.product.name} added to cart`, 'View Cart', {
+        duration: 3000,
+        panelClass: ['success-snackbar']
+      }).onAction().subscribe(() => {
+        this.router.navigate(['/cart']);
+      });
+
+    } catch (error: any) {
+      console.error('Error adding to cart:', error);
+      this.snackBar.open('Failed to add item to cart', 'Close', {
+        duration: 3000,
+        panelClass: ['error-snackbar']
+      });
+    } finally {
+      this.addingToCart = false;
+    }
   }
 
-  buyNow(): void {
-    this.addToCart();
-    this.router.navigate(['/cart']);
+  incrementQuantity(): void {
+    if (this.quantity < this.maxQuantity) {
+      this.quantity++;
+    }
   }
 
-  isOutOfStock(): boolean {
-    const stock = this.product?.stockQuantity ?? 0;
-    return stock <= 0;
+  decrementQuantity(): void {
+    if (this.quantity > 1) {
+      this.quantity--;
+    }
   }
 
-  getStockColor(): 'primary' | 'accent' | 'warn' {
-    const stock = this.product?.stockQuantity ?? 0;
-    if (stock <= 0) return 'warn';
-    if (stock <= 10) return 'accent';
-    return 'primary';
-  }
-
-  getStockIcon(): string {
-    return (this.product?.stockQuantity ?? 0) > 0 ? 'check_circle' : 'remove_circle';
-  }
-
-  getStockText(): string {
-    const stock = this.product?.stockQuantity ?? 0;
-    if (stock <= 0) return 'Out of stock';
-    if (stock <= 10) return `Only ${stock} left`;
-    return `${stock} in stock`;
-  }
-
-  getStockClass(): string {
-    const stock = this.product?.stockQuantity ?? 0;
-    if (stock <= 0) return 'out-of-stock';
-    if (stock <= 10) return 'low-stock';
-    return 'in-stock';
-  }
-
-  navigateToProduct(productId: string): void {
-    this.router.navigate(['/product', productId]);
+  getStarArray(rating: number): number[] {
+    return Array(Math.floor(rating)).fill(0);
   }
 
   formatPrice(price: number): string {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(price);
+    return this.productService.formatPrice(price);
+  }
+
+  goBack(): void {
+    this.router.navigate(['/products']);
   }
 }

@@ -1,4 +1,5 @@
 export const environment = {
   production: true,
-  EC_API_BASE: 'dpg-d2hk75ili9vc739f3da0-a.oregon-postgres.render.com'
+  // set to your deployed API domain when you have it
+  EC_API_BASE: 'https://your-api-domain.com/api'
 };

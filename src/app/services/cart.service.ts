@@ -1,267 +1,378 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
-import { tap } from 'rxjs/operators';
-import { ApiService } from '../services/api.service';
-import { Cart, CartItem, CreateCartItemDto, Product } from '../models';
+import { HttpClient } from '@angular/common/http';
+import { BehaviorSubject, Observable, firstValueFrom } from 'rxjs';
+import { AuthService } from '..//core/auth/auth.service';
+import { ProductService, Product } from './product.service';
+import { environment } from '../../..//.//src/environments/environment';
+
+export interface CartItem {
+  id: number;
+  userId: number;
+  productId: number;
+  product: Product;
+  quantity: number;
+  price: number;
+  totalPrice: number;
+  createdAt: Date;
+  updatedAt?: Date;
+}
+
+export interface Cart {
+  id: number;
+  userId: number;
+  items: CartItem[];
+  totalItems: number;
+  totalAmount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface CheckoutRequest {
+  shippingAddress: {
+    fullName: string;
+    addressLine1: string;
+    addressLine2?: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    country: string;
+  };
+  paymentMethod: {
+    type: 'card' | 'paypal';
+    cardToken?: string;
+    paypalToken?: string;
+  };
+}
+
+export interface Order {
+  id: number;
+  userId: number;
+  orderNumber: string;
+  status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  items: CartItem[];
+  subtotal: number;
+  tax: number;
+  shipping: number;
+  total: number;
+  shippingAddress: any;
+  createdAt: Date;
+}
 
 @Injectable({
   providedIn: 'root'
 })
 export class CartService {
-  private readonly endpoint = 'Carts';
+  private baseUrl: string;
   private cartSubject = new BehaviorSubject<Cart | null>(null);
   private cartItemCountSubject = new BehaviorSubject<number>(0);
 
   public cart$ = this.cartSubject.asObservable();
   public cartItemCount$ = this.cartItemCountSubject.asObservable();
 
-  constructor(private apiService: ApiService) {
-    this.loadCart();
-  }
+  constructor(
+    private http: HttpClient,
+    private auth: AuthService,
+    private productService: ProductService
+  ) {
+    const api = (environment.EC_API_BASE || '').replace(/\/+$/, '');
+    this.baseUrl = `${api}/api/cart`;
 
-  // Load cart from server or localStorage
-  private loadCart(): void {
-    const cartId = localStorage.getItem('cartId');
-    if (cartId) {
-      this.getCart(cartId).subscribe({
-        next: (cart) => {
-          this.updateCartState(cart);
-        },
-        error: (error) => {
-          console.error('Error loading cart:', error);
-          this.createNewCart();
-        }
-      });
-    } else {
-      this.createNewCart();
-    }
-  }
-
-  // Create a new cart
-  private createNewCart(): void {
-    this.apiService.post<Cart>(this.endpoint, {}).subscribe({
-      next: (cart) => {
-        localStorage.setItem('cartId', cart.id);
-        this.updateCartState(cart);
-      },
-      error: (error) => {
-        console.error('Error creating cart:', error);
-        // Fallback to local storage cart
-        this.initializeLocalCart();
-      }
-    });
-  }
-
-  // Initialize local cart as fallback
-  private initializeLocalCart(): void {
-    const localCart: Cart = {
-      id: 'local-cart',
-      items: [],
-      totalAmount: 0,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    this.updateCartState(localCart);
-  }
-
-  // Update cart state
-  private updateCartState(cart: Cart): void {
-    this.cartSubject.next(cart);
-    this.cartItemCountSubject.next(cart.items.reduce((count, item) => count + item.quantity, 0));
-  }
-
-  // Get cart by ID
-  getCart(id: string): Observable<Cart> {
-    return this.apiService.get<Cart>(`${this.endpoint}/${id}`);
-  }
-
-  // Add item to cart
-  addToCart(productId: string, quantity: number = 1): Observable<Cart> {
-    const currentCart = this.cartSubject.value;
-    if (!currentCart) {
-      throw new Error('Cart not initialized');
-    }
-
-    const cartItemDto: CreateCartItemDto = {
-      productId,
-      quantity
-    };
-
-    if (currentCart.id === 'local-cart') {
-      return this.addToLocalCart(productId, quantity);
-    }
-
-    return this.apiService.post<Cart>(`${this.endpoint}/${currentCart.id}/items`, cartItemDto)
-      .pipe(
-        tap(cart => this.updateCartState(cart))
-      );
-  }
-
-  // Add to local cart (fallback)
-  private addToLocalCart(productId: string, quantity: number): Observable<Cart> {
-    return new Observable(observer => {
-      const currentCart = this.cartSubject.value;
-      if (!currentCart) {
-        observer.error('Cart not initialized');
-        return;
-      }
-
-      // Check if item already exists
-      const existingItem = currentCart.items.find(item => item.productId === productId);
-      
-      if (existingItem) {
-        existingItem.quantity += quantity;
-        existingItem.totalPrice = existingItem.unitPrice * existingItem.quantity;
+    // Initialize cart when user logs in
+    this.auth.isLoggedIn$.subscribe(isLoggedIn => {
+      if (isLoggedIn) {
+        this.loadCart();
       } else {
-        // Note: In real implementation, you'd fetch product details
-        const newItem: CartItem = {
-          id: `item-${Date.now()}`,
-          cartId: currentCart.id,
+        this.clearCartState();
+      }
+    });
+  }
+
+  // ===== CART MANAGEMENT =====
+
+  async loadCart(): Promise<Cart | null> {
+    const isLoggedIn = this.auth.isLoggedIn$.value;
+    if (!isLoggedIn) {
+      return null;
+    }
+
+    try {
+      const cart = await firstValueFrom(
+        this.http.get<Cart>(this.baseUrl)
+      );
+      
+      this.cartSubject.next(cart);
+      this.cartItemCountSubject.next(cart.totalItems);
+      return cart;
+    } catch (error: any) {
+      console.error('Error loading cart:', error);
+      
+      // If cart doesn't exist (404), create one
+      if (error?.status === 404) {
+        return await this.createCart();
+      }
+      
+      throw error;
+    }
+  }
+
+  private async createCart(): Promise<Cart> {
+    try {
+      const cart = await firstValueFrom(
+        this.http.post<Cart>(this.baseUrl, {})
+      );
+      
+      this.cartSubject.next(cart);
+      this.cartItemCountSubject.next(0);
+      return cart;
+    } catch (error) {
+      console.error('Error creating cart:', error);
+      throw error;
+    }
+  }
+
+  async addToCart(productId: number, quantity: number = 1): Promise<CartItem> {
+    const isLoggedIn = this.auth.isLoggedIn$.value;
+    if (!isLoggedIn) {
+      throw new Error('Please sign in to add items to cart');
+    }
+
+    try {
+      const cartItem = await firstValueFrom(
+        this.http.post<CartItem>(`${this.baseUrl}/items`, {
           productId,
-          quantity,
-          unitPrice: 0, // Would be fetched from product
-          totalPrice: 0
-        };
-        currentCart.items.push(newItem);
-      }
-
-      currentCart.totalAmount = currentCart.items.reduce((sum, item) => sum + item.totalPrice, 0);
-      currentCart.updatedAt = new Date();
-
-      this.updateCartState(currentCart);
-      observer.next(currentCart);
-      observer.complete();
-    });
-  }
-
-  // Update cart item quantity
-  updateCartItem(itemId: string, quantity: number): Observable<Cart> {
-    const currentCart = this.cartSubject.value;
-    if (!currentCart) {
-      throw new Error('Cart not initialized');
-    }
-
-    if (currentCart.id === 'local-cart') {
-      return this.updateLocalCartItem(itemId, quantity);
-    }
-
-    return this.apiService.put<Cart>(`${this.endpoint}/${currentCart.id}/items/${itemId}`, { quantity })
-      .pipe(
-        tap(cart => this.updateCartState(cart))
-      );
-  }
-
-  // Update local cart item
-  private updateLocalCartItem(itemId: string, quantity: number): Observable<Cart> {
-    return new Observable(observer => {
-      const currentCart = this.cartSubject.value;
-      if (!currentCart) {
-        observer.error('Cart not initialized');
-        return;
-      }
-
-      const item = currentCart.items.find(i => i.id === itemId);
-      if (item) {
-        item.quantity = quantity;
-        item.totalPrice = item.unitPrice * quantity;
-        currentCart.totalAmount = currentCart.items.reduce((sum, item) => sum + item.totalPrice, 0);
-        currentCart.updatedAt = new Date();
-        
-        this.updateCartState(currentCart);
-      }
-
-      observer.next(currentCart);
-      observer.complete();
-    });
-  }
-
-  // Remove item from cart
-  removeFromCart(itemId: string): Observable<Cart> {
-    const currentCart = this.cartSubject.value;
-    if (!currentCart) {
-      throw new Error('Cart not initialized');
-    }
-
-    if (currentCart.id === 'local-cart') {
-      return this.removeFromLocalCart(itemId);
-    }
-
-    return this.apiService.delete<Cart>(`${this.endpoint}/${currentCart.id}/items/${itemId}`)
-      .pipe(
-        tap(cart => this.updateCartState(cart))
-      );
-  }
-
-  // Remove from local cart
-  private removeFromLocalCart(itemId: string): Observable<Cart> {
-    return new Observable(observer => {
-      const currentCart = this.cartSubject.value;
-      if (!currentCart) {
-        observer.error('Cart not initialized');
-        return;
-      }
-
-      currentCart.items = currentCart.items.filter(item => item.id !== itemId);
-      currentCart.totalAmount = currentCart.items.reduce((sum, item) => sum + item.totalPrice, 0);
-      currentCart.updatedAt = new Date();
-
-      this.updateCartState(currentCart);
-      observer.next(currentCart);
-      observer.complete();
-    });
-  }
-
-  // Clear cart
-  clearCart(): Observable<Cart> {
-    const currentCart = this.cartSubject.value;
-    if (!currentCart) {
-      throw new Error('Cart not initialized');
-    }
-
-    if (currentCart.id === 'local-cart') {
-      return this.clearLocalCart();
-    }
-
-    return this.apiService.delete<Cart>(`${this.endpoint}/${currentCart.id}`)
-      .pipe(
-        tap(() => {
-          localStorage.removeItem('cartId');
-          this.createNewCart();
+          quantity
         })
       );
+
+      // Reload cart to get updated totals
+      await this.loadCart();
+      
+      return cartItem;
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+      throw error;
+    }
   }
 
-  // Clear local cart
-  private clearLocalCart(): Observable<Cart> {
-    return new Observable(observer => {
-      const clearedCart: Cart = {
-        id: 'local-cart',
-        items: [],
-        totalAmount: 0,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
+  async updateCartItem(itemId: number, quantity: number): Promise<CartItem> {
+    const isLoggedIn = this.auth.isLoggedIn$.value;
+    if (!isLoggedIn) {
+      throw new Error('Please sign in to update cart');
+    }
 
-      this.updateCartState(clearedCart);
-      observer.next(clearedCart);
-      observer.complete();
-    });
+    try {
+      const cartItem = await firstValueFrom(
+        this.http.put<CartItem>(`${this.baseUrl}/items/${itemId}`, {
+          quantity
+        })
+      );
+
+      // Reload cart to get updated totals
+      await this.loadCart();
+      
+      return cartItem;
+    } catch (error) {
+      console.error('Error updating cart item:', error);
+      throw error;
+    }
   }
 
-  // Get current cart
-  getCurrentCart(): Cart | null {
+  async removeFromCart(itemId: number): Promise<void> {
+    const isLoggedIn = this.auth.isLoggedIn$.value;
+    if (!isLoggedIn) {
+      throw new Error('Please sign in to remove items from cart');
+    }
+
+    try {
+      await firstValueFrom(
+        this.http.delete(`${this.baseUrl}/items/${itemId}`)
+      );
+
+      // Reload cart to get updated totals
+      await this.loadCart();
+    } catch (error) {
+      console.error('Error removing from cart:', error);
+      throw error;
+    }
+  }
+
+  async clearCart(): Promise<void> {
+    const isLoggedIn = this.auth.isLoggedIn$.value;
+    if (!isLoggedIn) {
+      throw new Error('Please sign in to clear cart');
+    }
+
+    try {
+      await firstValueFrom(
+        this.http.delete(`${this.baseUrl}/clear`)
+      );
+      
+      this.clearCartState();
+    } catch (error) {
+      console.error('Error clearing cart:', error);
+      throw error;
+    }
+  }
+
+  private clearCartState(): void {
+    this.cartSubject.next(null);
+    this.cartItemCountSubject.next(0);
+  }
+
+  // ===== CHECKOUT =====
+
+  async checkout(checkoutData: CheckoutRequest): Promise<Order> {
+    const isLoggedIn = this.auth.isLoggedIn$.value;
+    if (!isLoggedIn) {
+      throw new Error('Please sign in to checkout');
+    }
+
+    try {
+      const order = await firstValueFrom(
+        this.http.post<Order>(`${this.baseUrl}/checkout`, checkoutData)
+      );
+
+      // Clear cart after successful checkout
+      this.clearCartState();
+
+      return order;
+    } catch (error) {
+      console.error('Error during checkout:', error);
+      throw error;
+    }
+  }
+
+  async validateCheckout(): Promise<{ valid: boolean; errors: string[] }> {
+    try {
+      const result = await firstValueFrom(
+        this.http.post<{ valid: boolean; errors: string[] }>(`${this.baseUrl}/validate`, {})
+      );
+      return result;
+    } catch (error) {
+      console.error('Error validating checkout:', error);
+      return { valid: false, errors: ['Validation failed'] };
+    }
+  }
+
+  // ===== UTILITY METHODS =====
+
+  get currentCart(): Cart | null {
     return this.cartSubject.value;
   }
 
-  // Get cart item count
-  getItemCount(): number {
-    const cart = this.cartSubject.value;
-    return cart ? cart.items.reduce((count, item) => count + item.quantity, 0) : 0;
+  get cartItemCount(): number {
+    return this.cartItemCountSubject.value;
   }
 
-  // Get cart total
-  getCartTotal(): number {
-    const cart = this.cartSubject.value;
-    return cart ? cart.totalAmount : 0;
+  isItemInCart(productId: number): boolean {
+    const cart = this.currentCart;
+    if (!cart) return false;
+    
+    return cart.items.some(item => item.productId === productId);
+  }
+
+  getCartItemByProductId(productId: number): CartItem | null {
+    const cart = this.currentCart;
+    if (!cart) return null;
+    
+    return cart.items.find(item => item.productId === productId) || null;
+  }
+
+  calculateSubtotal(): number {
+    const cart = this.currentCart;
+    if (!cart) return 0;
+    
+    return cart.items.reduce((total, item) => total + item.totalPrice, 0);
+  }
+
+  calculateTax(taxRate: number = 0.08): number {
+    return this.calculateSubtotal() * taxRate;
+  }
+
+  calculateShipping(freeShippingThreshold: number = 100): number {
+    const subtotal = this.calculateSubtotal();
+    return subtotal >= freeShippingThreshold ? 0 : 15.99;
+  }
+
+  calculateTotal(taxRate: number = 0.08, freeShippingThreshold: number = 100): number {
+    const subtotal = this.calculateSubtotal();
+    const tax = this.calculateTax(taxRate);
+    const shipping = this.calculateShipping(freeShippingThreshold);
+    
+    return subtotal + tax + shipping;
+  }
+
+  formatPrice(price: number): string {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(price);
+  }
+
+  // ===== VALIDATION =====
+
+  validateCartForCheckout(): string[] {
+    const errors: string[] = [];
+    const cart = this.currentCart;
+
+    if (!cart || cart.items.length === 0) {
+      errors.push('Cart is empty');
+      return errors;
+    }
+
+    // Check if all items are still in stock
+    for (const item of cart.items) {
+      if (!item.product.isActive) {
+        errors.push(`${item.product.name} is no longer available`);
+      }
+      
+      if (item.product.stock < item.quantity) {
+        errors.push(`Only ${item.product.stock} units of ${item.product.name} are available`);
+      }
+    }
+
+    return errors;
+  }
+
+  // ===== GUEST CART FALLBACK =====
+
+  private getGuestCartKey(): string {
+    return 'guestCart';
+  }
+
+  saveGuestCart(items: Partial<CartItem>[]): void {
+    if (typeof Storage !== 'undefined') {
+      localStorage.setItem(this.getGuestCartKey(), JSON.stringify(items));
+    }
+  }
+
+  loadGuestCart(): Partial<CartItem>[] {
+    if (typeof Storage !== 'undefined') {
+      const cartData = localStorage.getItem(this.getGuestCartKey());
+      return cartData ? JSON.parse(cartData) : [];
+    }
+    return [];
+  }
+
+  clearGuestCart(): void {
+    if (typeof Storage !== 'undefined') {
+      localStorage.removeItem(this.getGuestCartKey());
+    }
+  }
+
+  async migrateGuestCartToUser(): Promise<void> {
+    const guestItems = this.loadGuestCart();
+    if (guestItems.length === 0) return;
+
+    try {
+      for (const item of guestItems) {
+        if (item.productId && item.quantity) {
+          await this.addToCart(item.productId, item.quantity);
+        }
+      }
+      this.clearGuestCart();
+    } catch (error) {
+      console.error('Error migrating guest cart:', error);
+    }
   }
 }
