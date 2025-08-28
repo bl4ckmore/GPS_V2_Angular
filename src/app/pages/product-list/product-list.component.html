@@ -1,1 +1,327 @@
-<p>product-list works!</p>
+<!-- product-list.component.html -->
+<div class="products-wrapper" [class.loading]="loading">
+  <!-- Header Section -->
+  <section class="products-header">
+    <div class="header-content">
+      <nav class="breadcrumb">
+        <div class="breadcrumb-item" (click)="navigateToHome()">
+          <mat-icon>home</mat-icon>
+          <span>Home</span>
+        </div>
+        <mat-icon>chevron_right</mat-icon>
+        <div class="breadcrumb-item">
+          <span>GPS Trackers</span>
+        </div>
+      </nav>
+      <h1 class="header-title">GPS Tracking Solutions</h1>
+      <p class="header-subtitle">
+        Professional-grade GPS tracking devices for fleet management, asset security, and personal monitoring
+      </p>
+    </div>
+  </section>
+
+  <!-- Main Container -->
+  <div class="products-container">
+    <!-- Filters Sidebar -->
+    <aside class="filters-sidebar">
+      <!-- Search -->
+      <div class="filter-section">
+        <h3 class="filter-title">
+          <mat-icon>search</mat-icon>
+          Search Products
+        </h3>
+        <div class="search-box">
+          <mat-icon class="search-icon">search</mat-icon>
+          <input 
+            type="text" 
+            class="search-input" 
+            placeholder="Search GPS trackers..."
+            [(ngModel)]="searchTerm"
+            (input)="onSearchInput()"
+            (keyup.enter)="performSearch()">
+        </div>
+      </div>
+
+      <!-- Categories -->
+      <div class="filter-section">
+        <h3 class="filter-title">
+          <mat-icon>category</mat-icon>
+          Categories
+        </h3>
+        <ul class="category-list">
+          <li class="category-item" *ngFor="let category of categories">
+            <button 
+              class="category-btn"
+              [class.active]="selectedCategory === category.slug"
+              (click)="selectCategory(category.slug)">
+              <mat-icon>{{category.icon}}</mat-icon>
+              <span>{{category.name}}</span>
+              <span class="category-count">{{category.count}}</span>
+            </button>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Price Range -->
+      <div class="filter-section">
+        <h3 class="filter-title">
+          <mat-icon>attach_money</mat-icon>
+          Price Range
+        </h3>
+        <div class="price-range">
+          <input 
+            type="number" 
+            class="price-input" 
+            placeholder="Min"
+            [(ngModel)]="priceRange.min"
+            (blur)="validatePriceRange()">
+          <span>-</span>
+          <input 
+            type="number" 
+            class="price-input" 
+            placeholder="Max"
+            [(ngModel)]="priceRange.max"
+            (blur)="validatePriceRange()">
+        </div>
+        <div class="filter-actions">
+          <button 
+            mat-raised-button 
+            color="primary" 
+            class="filter-btn primary"
+            (click)="applyPriceFilter()"
+            [disabled]="!isPriceRangeValid()">
+            Apply
+          </button>
+          <button 
+            mat-button 
+            class="filter-btn"
+            (click)="clearPriceFilter()">
+            Clear
+          </button>
+        </div>
+      </div>
+
+      <!-- Clear All Filters -->
+      <div class="filter-section">
+        <button 
+          mat-stroked-button 
+          color="primary" 
+          class="clear-all-btn"
+          (click)="clearAllFilters()"
+          [disabled]="!hasActiveFilters()">
+          <mat-icon>clear_all</mat-icon>
+          Clear All Filters
+        </button>
+      </div>
+    </aside>
+
+    <!-- Products Content -->
+    <main class="products-content">
+      <!-- Toolbar -->
+      <div class="products-toolbar">
+        <div class="results-info">
+          <span *ngIf="!loading">
+            Showing {{getDisplayStart()}}-{{getDisplayEnd()}} of {{totalProducts}} professional GPS trackers
+          </span>
+          <span *ngIf="loading">Loading products...</span>
+        </div>
+        <div class="sort-controls">
+          <div class="view-toggle">
+            <button 
+              mat-icon-button 
+              class="view-btn"
+              [class.active]="viewMode === 'grid'"
+              (click)="setViewMode('grid')"
+              matTooltip="Grid View">
+              <mat-icon>grid_view</mat-icon>
+            </button>
+            <button 
+              mat-icon-button 
+              class="view-btn"
+              [class.active]="viewMode === 'list'"
+              (click)="setViewMode('list')"
+              matTooltip="List View">
+              <mat-icon>view_list</mat-icon>
+            </button>
+          </div>
+          <mat-form-field appearance="outline" class="sort-select">
+            <mat-select 
+              [(value)]="sortOption" 
+              (selectionChange)="onSortChange()"
+              placeholder="Sort by">
+              <mat-option value="name-asc">Name (A-Z)</mat-option>
+              <mat-option value="name-desc">Name (Z-A)</mat-option>
+              <mat-option value="price-asc">Price: Low to High</mat-option>
+              <mat-option value="price-desc">Price: High to Low</mat-option>
+              <mat-option value="rating-desc">Best Rating</mat-option>
+              <mat-option value="createdAt-desc">Newest First</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+      </div>
+
+      <!-- Products Grid -->
+      <div class="products-grid" [class.list-view]="viewMode === 'list'">
+        <div 
+          class="product-card"
+          *ngFor="let product of products; trackBy: trackByProductId"
+          (click)="navigateToProduct(product.id)">
+          
+          <div class="product-image">
+            <img 
+              [src]="product.imageUrl || getDefaultImage(product.category)" 
+              [alt]="product.name"
+              loading="lazy"
+              (error)="onImageError($event)">
+            
+            <!-- Product Badges -->
+            <div class="product-badges">
+              <div class="price-badge" *ngIf="product.price">
+                <span class="currency">$</span>
+                <span class="amount">{{product.price}}</span>
+              </div>
+              <div 
+                class="stock-badge" 
+                [class.low-stock]="product.stock < 10 && product.stock > 0" 
+                [class.out-of-stock]="product.stock === 0">
+                <mat-icon>{{getStockIcon(product.stock)}}</mat-icon>
+                <span>{{getStockText(product.stock)}}</span>
+              </div>
+              <div class="new-badge" *ngIf="isNewProduct(product)">
+                <mat-icon>fiber_new</mat-icon>
+                <span>New</span>
+              </div>
+            </div>
+
+            <!-- Wishlist Button -->
+            <button 
+              mat-icon-button 
+              class="wishlist-btn"
+              (click)="toggleWishlist(product, $event)"
+              [class.active]="isInWishlist(product.id)"
+              [class.loading]="wishlistLoading === product.id"
+              [disabled]="wishlistLoading === product.id"
+              [matTooltip]="isInWishlist(product.id) ? 'Remove from Wishlist' : 'Add to Wishlist'">
+              
+              <mat-spinner 
+                *ngIf="wishlistLoading === product.id" 
+                diameter="20" 
+                class="wishlist-spinner">
+              </mat-spinner>
+              <mat-icon *ngIf="wishlistLoading !== product.id">
+                {{isInWishlist(product.id) ? 'favorite' : 'favorite_border'}}
+              </mat-icon>
+            </button>
+          </div>
+
+          <div class="product-content">
+            <h3 class="product-title">{{product.name}}</h3>
+            <p class="product-description">{{product.description}}</p>
+
+            <div class="product-features" *ngIf="product.features && product.features.length > 0">
+              <div class="feature-item" *ngFor="let feature of product.features.slice(0, 3)">
+                <mat-icon>check_circle</mat-icon>
+                <span>{{feature}}</span>
+              </div>
+            </div>
+
+            <div class="product-rating" *ngIf="product.rating">
+              <div class="stars">
+                <mat-icon 
+                  *ngFor="let star of getStarArray(product.rating)" 
+                  class="star">star</mat-icon>
+                <mat-icon 
+                  *ngFor="let star of getEmptyStarArray(product.rating)" 
+                  class="star empty">star_border</mat-icon>
+              </div>
+              <span class="rating-text">{{product.rating}}/5 ({{product.reviewCount || 0}} reviews)</span>
+            </div>
+          </div>
+
+          <div class="product-actions">
+            <button 
+              mat-raised-button 
+              color="primary" 
+              class="add-to-cart-btn"
+              [disabled]="product.stock === 0 || addingToCart === product.id"
+              (click)="addToCart(product, $event)">
+              
+              <mat-spinner 
+                *ngIf="addingToCart === product.id" 
+                diameter="16" 
+                class="button-spinner">
+              </mat-spinner>
+              <mat-icon *ngIf="addingToCart !== product.id">
+                {{product.stock === 0 ? 'block' : 'add_shopping_cart'}}
+              </mat-icon>
+              <span>{{getAddToCartText(product)}}</span>
+            </button>
+            
+            <button 
+              mat-button 
+              color="primary" 
+              class="details-btn"
+              (click)="navigateToProduct(product.id, $event)">
+              <span>View Details</span>
+              <mat-icon>arrow_forward</mat-icon>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <div class="empty-state" *ngIf="!loading && products.length === 0">
+        <mat-icon class="empty-icon">search_off</mat-icon>
+        <h3>No products found</h3>
+        <p>Try adjusting your search criteria or clearing filters to see more products.</p>
+        <button 
+          mat-raised-button 
+          color="primary" 
+          (click)="clearAllFilters()">
+          Clear Filters
+        </button>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination" *ngIf="totalPages > 1 && !loading">
+        <button 
+          mat-icon-button 
+          class="page-btn"
+          [disabled]="currentPage === 1"
+          (click)="goToPage(currentPage - 1)"
+          matTooltip="Previous Page">
+          <mat-icon>chevron_left</mat-icon>
+        </button>
+
+        <ng-container *ngFor="let page of getVisiblePages()">
+          <button 
+            *ngIf="page !== '...'"
+            mat-button 
+            class="page-btn"
+            [class.active]="page === currentPage"
+            (click)="goToPage(page)">
+            {{page}}
+          </button>
+          <span *ngIf="page === '...'" class="page-ellipsis">...</span>
+        </ng-container>
+
+        <button 
+          mat-icon-button 
+          class="page-btn"
+          [disabled]="currentPage === totalPages"
+          (click)="goToPage(currentPage + 1)"
+          matTooltip="Next Page">
+          <mat-icon>chevron_right</mat-icon>
+        </button>
+      </div>
+    </main>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" *ngIf="loading">
+    <div class="loading-content">
+      <mat-spinner diameter="60"></mat-spinner>
+      <p>Loading GPS tracking products...</p>
+    </div>
+  </div>
+</div>

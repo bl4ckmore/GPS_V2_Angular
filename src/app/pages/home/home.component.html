@@ -1,362 +1,428 @@
-<!-- Professional Navigation Bar -->
-<mat-toolbar class="navbar">
-  <div class="navbar-content">
-    <!-- Company Logo -->
-    <div class="logo-section">
-      <a routerLink="/" class="logo-link">
-        <mat-icon class="logo-icon">navigation</mat-icon>
-        <span class="logo-text">SEEWORLD</span>
-        <span class="logo-tagline">Professional GPS Solutions</span>
-      </a>
-    </div>
-
-    <!-- Navigation Menu -->
-    <nav class="nav-menu">
-      <div class="nav-item dropdown" [matMenuTriggerFor]="gpsMenu">
-        <button mat-button class="nav-button">
-          GPS Solutions
-          <mat-icon>keyboard_arrow_down</mat-icon>
-        </button>
-        <mat-menu #gpsMenu="matMenu" class="dropdown-menu">
-          <a mat-menu-item *ngFor="let option of gpsTrackerOptions"
-             (click)="navigateTo(option.link)">
-            <mat-icon>{{option.icon}}</mat-icon>
-            <span>{{option.name}}</span>
-          </a>
-        </mat-menu>
+<!-- home.component.html -->
+<div class="home-wrapper">
+  <!-- Professional Navigation Bar -->
+  <mat-toolbar class="navbar">
+    <div class="navbar-content">
+      <!-- Company Logo -->
+      <div class="logo-section">
+        <a routerLink="/" class="logo-link">
+          <mat-icon class="logo-icon">navigation</mat-icon>
+          <span class="logo-text">SEEWORLD</span>
+          <span class="logo-tagline">Professional GPS Solutions</span>
+        </a>
       </div>
 
-      <div class="nav-item dropdown" [matMenuTriggerFor]="solutionsMenu">
-        <button mat-button class="nav-button">
-          Solutions
-          <mat-icon>keyboard_arrow_down</mat-icon>
-        </button>
-        <mat-menu #solutionsMenu="matMenu" class="dropdown-menu">
-          <a mat-menu-item *ngFor="let option of solutionsOptions"
-             (click)="navigateTo(option.link)">
-            <mat-icon>{{option.icon}}</mat-icon>
-            <span>{{option.name}}</span>
-          </a>
-        </mat-menu>
-      </div>
-
-      <button mat-button class="nav-button" (click)="navigateTo('/about')">
-        <mat-icon>info</mat-icon>
-        About
-      </button>
-    </nav>
-
-      <!-- Shopping Cart -->
-       <button
-        mat-icon-button
-        class="cart-button"
-        (click)="navigateTo('/cart')"
-        matTooltip="Shopping Cart">
-        <div class="cart-icon-container">
-          <mat-icon>shopping_cart</mat-icon>
-          <span 
-            *ngIf="cartItemCount > 0" 
-            class="cart-badge">
-            {{cartItemCount}}
-          </span>
+      <!-- Navigation Menu -->
+      <nav class="nav-menu">
+        <div class="nav-item dropdown" [matMenuTriggerFor]="gpsMenu">
+          <button mat-button class="nav-button">
+            GPS Solutions
+            <mat-icon>keyboard_arrow_down</mat-icon>
+          </button>
+          <mat-menu #gpsMenu="matMenu" class="dropdown-menu">
+            <a mat-menu-item *ngFor="let option of gpsTrackerOptions"
+               (click)="navigateTo(option.link)">
+              <mat-icon>{{option.icon}}</mat-icon>
+              <span>{{option.name}}</span>
+            </a>
+          </mat-menu>
         </div>
-      </button>
 
-      <button
-        mat-raised-button
-        color="primary"
-        class="contact-button"
-        (click)="navigateTo('/contact')">
-        <mat-icon>phone</mat-icon>
-        Contact Sales
-      </button>
+        <div class="nav-item dropdown" [matMenuTriggerFor]="solutionsMenu">
+          <button mat-button class="nav-button">
+            Solutions
+            <mat-icon>keyboard_arrow_down</mat-icon>
+          </button>
+          <mat-menu #solutionsMenu="matMenu" class="dropdown-menu">
+            <a mat-menu-item *ngFor="let option of solutionsOptions"
+               (click)="navigateTo(option.link)">
+              <mat-icon>{{option.icon}}</mat-icon>
+              <span>{{option.name}}</span>
+            </a>
+          </mat-menu>
+        </div>
 
-      <!-- Show when NOT logged in -->
-      <button
-        *ngIf="!(auth.isLoggedIn$ | async)"
-        mat-stroked-button
-        color="primary"
-        class="signin-button"
-        routerLink="/sign-in">
-        <mat-icon>login</mat-icon>
-        Sign In
-      </button>
-
-      <!-- Show when logged in (user info) -->
-      <div *ngIf="auth.isLoggedIn$ | async" class="user-section">
-        <button mat-button [matMenuTriggerFor]="userMenu" class="user-chip">
-          <mat-icon>person</mat-icon>
-          <span>{{ auth.currentUser?.name || 'User' }}</span>
-          <mat-icon class="dropdown-icon">keyboard_arrow_down</mat-icon>
+        <button mat-button class="nav-button" (click)="navigateTo('/about')">
+          <mat-icon>info</mat-icon>
+          About
         </button>
-        <mat-menu #userMenu="matMenu">
-          <button mat-menu-item (click)="navigateTo('/profile')">
-            <mat-icon>account_circle</mat-icon>
-            <span>My Profile</span>
+      </nav>
+
+      <div class="nav-actions">
+        <!-- Shopping Cart -->
+        <button
+          mat-icon-button
+          class="cart-button"
+          (click)="navigateTo('/cart')"
+          matTooltip="Shopping Cart">
+          <div class="cart-icon-container">
+            <mat-icon>shopping_cart</mat-icon>
+            <span 
+              *ngIf="cartItemCount > 0" 
+              class="cart-badge">
+              {{cartItemCount}}
+            </span>
+          </div>
+        </button>
+
+        <!-- Wishlist -->
+        <button
+          mat-icon-button
+          class="wishlist-button"
+          (click)="navigateTo('/wishlist')"
+          matTooltip="Wishlist">
+          <div class="wishlist-icon-container">
+            <mat-icon>favorite</mat-icon>
+            <span 
+              *ngIf="wishlistItemCount > 0" 
+              class="wishlist-badge">
+              {{wishlistItemCount}}
+            </span>
+          </div>
+        </button>
+
+        <button
+          mat-raised-button
+          color="primary"
+          class="contact-button"
+          (click)="navigateTo('/contact')">
+          <mat-icon>phone</mat-icon>
+          Contact Sales
+        </button>
+
+        <!-- Show when NOT logged in -->
+        <button
+          *ngIf="!(auth.isLoggedIn$ | async)"
+          mat-stroked-button
+          color="primary"
+          class="signin-button"
+          routerLink="/sign-in">
+          <mat-icon>login</mat-icon>
+          Sign In
+        </button>
+
+        <!-- Show when logged in (user info) -->
+        <div *ngIf="auth.isLoggedIn$ | async" class="user-section">
+          <button mat-button [matMenuTriggerFor]="userMenu" class="user-chip">
+            <mat-icon>person</mat-icon>
+            <span>{{ auth.currentUser?.name || 'User' }}</span>
+            <mat-icon class="dropdown-icon">keyboard_arrow_down</mat-icon>
           </button>
-          <button mat-menu-item (click)="navigateTo('/orders')">
-            <mat-icon>receipt</mat-icon>
-            <span>My Orders</span>
-          </button>
-          <mat-divider></mat-divider>
-          <button mat-menu-item (click)="auth.logout()">
-            <mat-icon>logout</mat-icon>
-            <span>Sign Out</span>
-          </button>
-        </mat-menu>
+          <mat-menu #userMenu="matMenu">
+            <button mat-menu-item (click)="navigateTo('/profile')">
+              <mat-icon>account_circle</mat-icon>
+              <span>My Profile</span>
+            </button>
+            <button mat-menu-item (click)="navigateTo('/orders')">
+              <mat-icon>receipt</mat-icon>
+              <span>My Orders</span>
+            </button>
+            <mat-divider></mat-divider>
+            <button mat-menu-item (click)="auth.logout()">
+              <mat-icon>logout</mat-icon>
+              <span>Sign Out</span>
+            </button>
+          </mat-menu>
+        </div>
+
+        <!-- Admin-only: Manage (CRUD) -->
+        <button
+          *ngIf="auth.isAdmin"
+          mat-stroked-button
+          color="accent"
+          class="admin-button"
+          routerLink="/admin/dashboard">
+          <mat-icon>admin_panel_settings</mat-icon>
+          Admin Panel
+        </button>
       </div>
-
-      <!-- Admin-only: Manage (CRUD) -->
-      <button
-        *ngIf="auth.isAdmin"
-        mat-stroked-button
-        color="accent"
-        class="admin-button"
-        routerLink="/admin/dashboard">
-        <mat-icon>admin_panel_settings</mat-icon>
-        Admin Panel
-      </button>
     </div>
-</mat-toolbar>
+  </mat-toolbar>
 
-<!-- Hero Section with Professional Slider -->
-<section class="hero-section">
-  <div class="hero-slides">
-    <div *ngFor="let slide of heroSlides; let i = index"
-         class="hero-slide"
-         [class.active]="i === currentSlide"
-         [ngStyle]="{'background': slide.backgroundImage}">
-      <div class="hero-overlay"></div>
+  <!-- Hero Section with Professional Slider -->
+  <section class="hero-section">
+    <div class="hero-slides">
+      <div *ngFor="let slide of heroSlides; let i = index"
+           class="hero-slide"
+           [class.active]="i === currentSlide"
+           [ngStyle]="{'background': slide.backgroundImage}">
+        <div class="hero-overlay"></div>
 
-      <div class="hero-container">
-        <div class="hero-content" [@fadeIn]>
-          <div class="hero-text" [@slideIn]>
-            <div class="hero-badge" *ngIf="slide.badge">
-              <mat-icon>{{slide.badgeIcon}}</mat-icon>
-              <span>{{slide.badge}}</span>
-            </div>
+        <div class="hero-container">
+          <div class="hero-content" [@fadeIn]>
+            <div class="hero-text" [@slideIn]>
+              <div class="hero-badge" *ngIf="slide.badge">
+                <mat-icon>{{slide.badgeIcon}}</mat-icon>
+                <span>{{slide.badge}}</span>
+              </div>
 
-            <h1 class="hero-title">{{slide.title}}</h1>
-            <h2 class="hero-subtitle" *ngIf="slide.subtitle">{{slide.subtitle}}</h2>
-            <p class="hero-description">{{slide.description}}</p>
+              <h1 class="hero-title">{{slide.title}}</h1>
+              <h2 class="hero-subtitle" *ngIf="slide.subtitle">{{slide.subtitle}}</h2>
+              <p class="hero-description">{{slide.description}}</p>
 
-            <div class="hero-stats" *ngIf="slide.stats">
-              <div class="stat-item" *ngFor="let stat of slide.stats">
-                <div class="stat-number">{{stat.number}}</div>
-                <div class="stat-label">{{stat.label}}</div>
+              <div class="hero-stats" *ngIf="slide.stats">
+                <div class="stat-item" *ngFor="let stat of slide.stats">
+                  <div class="stat-number">{{stat.number}}</div>
+                  <div class="stat-label">{{stat.label}}</div>
+                </div>
+              </div>
+
+              <div class="hero-actions">
+                <button mat-raised-button color="primary" class="primary-btn"
+                        (click)="navigateTo(slide.buttonLink)">
+                  <mat-icon>{{slide.buttonIcon || 'explore'}}</mat-icon>
+                  {{slide.buttonText}}
+                </button>
+                <button mat-stroked-button color="primary" class="secondary-btn"
+                        *ngIf="slide.secondaryButton"
+                        (click)="navigateTo(slide.secondaryLink!)">
+                  <mat-icon>{{slide.secondaryIcon || 'play_arrow'}}</mat-icon>
+                  {{slide.secondaryButton}}
+                </button>
               </div>
             </div>
-
-            <div class="hero-actions">
-              <button mat-raised-button color="primary" class="primary-btn"
-                      (click)="navigateTo(slide.buttonLink)">
-                <mat-icon>{{slide.buttonIcon || 'explore'}}</mat-icon>
-                {{slide.buttonText}}
-              </button>
-              <button mat-stroked-button color="primary" class="secondary-btn"
-                      *ngIf="slide.secondaryButton"
-                      (click)="navigateTo(slide.secondaryLink!)">
-                <mat-icon>{{slide.secondaryIcon || 'play_arrow'}}</mat-icon>
-                {{slide.secondaryButton}}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Slide controls -->
-      <button class="nav-arrow prev" (click)="previousSlide()" mat-icon-button>
-        <mat-icon>chevron_left</mat-icon>
-      </button>
-
-      <button class="nav-arrow next" (click)="nextSlide()" mat-icon-button>
-        <mat-icon>chevron_right</mat-icon>
-      </button>
-    </div>
-  </div>
-
-  <!-- Indicators -->
-  <div class="slide-indicators">
-    <button *ngFor="let slide of heroSlides; let i = index"
-            class="indicator"
-            [class.active]="i === currentSlide"
-            (click)="goToSlide(i)"
-            mat-button>
-      <span class="indicator-dot"></span>
-    </button>
-  </div>
-</section>
-
-<!-- Featured Products Section -->
-<section class="products-section">
-  <div class="section-container">
-    <div class="section-header" [@fadeIn]>
-      <div class="section-badge">
-        <mat-icon>security</mat-icon>
-        <span>Featured Products</span>
-      </div>
-      <h2 class="section-title">Enterprise GPS Tracking Solutions</h2>
-      <p class="section-description">
-        Military-grade GPS tracking solutions engineered for mission-critical operations.
-        Our enterprise platforms deliver uncompromising reliability, advanced security,
-        and comprehensive analytics trusted by industry leaders worldwide.
-      </p>
-    </div>
-
-    <div class="products-grid" [@staggerCards]>
-      <div class="product-card" *ngFor="let product of featuredProducts"
-           (click)="navigateTo('/products/' + product.id)">
-        <div class="product-header">
-          <div class="product-image">
-            <img [src]="product.imageUrl" [alt]="product.name" loading="lazy">
-          </div>
-          <div class="product-badges">
-            <div class="price-badge">
-              <span class="currency">$</span>
-              <span class="amount">{{product.price}}</span>
-            </div>
-            <div class="stock-badge" [class.low-stock]="product.stock < 10" [class.out-of-stock]="product.stock === 0">
-              <mat-icon>{{product.stock > 0 ? 'check_circle' : 'error'}}</mat-icon>
-              <span>{{product.stock > 0 ? 'In Stock' : 'Out of Stock'}}</span>
-            </div>
           </div>
         </div>
 
-        <div class="product-content">
-          <h3 class="product-title">{{product.name}}</h3>
-          <p class="product-description">{{product.description}}</p>
+        <!-- Slide controls -->
+        <button class="nav-arrow prev" (click)="previousSlide()" mat-icon-button>
+          <mat-icon>chevron_left</mat-icon>
+        </button>
 
-          <div class="product-features">
-            <div class="feature-item" *ngFor="let feature of product.features?.slice(0, 3)">
-              <mat-icon>check_circle</mat-icon>
-              <span>{{feature}}</span>
-            </div>
-          </div>
-
-          <div class="product-rating" *ngIf="product.rating">
-            <div class="stars">
-              <mat-icon *ngFor="let star of getStarArray(product.rating)" class="star">star</mat-icon>
-            </div>
-            <span class="rating-text">{{product.rating}}/5 ({{product.reviewCount || 0}} reviews)</span>
-          </div>
-        </div>
-
-        <div class="product-actions">
-          <button mat-raised-button color="primary" class="add-to-cart-btn"
-                  [disabled]="product.stock === 0"
-                  (click)="addToCart(product, $event)">
-            <mat-icon>add_shopping_cart</mat-icon>
-            {{product.stock > 0 ? 'Add to Cart' : 'Out of Stock'}}
-          </button>
-          <button mat-button color="primary" class="details-btn"
-                  (click)="navigateTo('/products/' + product.id); $event.stopPropagation()">
-            View Details
-            <mat-icon>arrow_forward</mat-icon>
-          </button>
-        </div>
+        <button class="nav-arrow next" (click)="nextSlide()" mat-icon-button>
+          <mat-icon>chevron_right</mat-icon>
+        </button>
       </div>
     </div>
 
-    <div class="section-footer">
-      <button mat-raised-button color="primary" class="view-all-btn"
-              (click)="navigateTo('/products')">
-        <mat-icon>inventory</mat-icon>
-        View All Products
+    <!-- Indicators -->
+    <div class="slide-indicators">
+      <button *ngFor="let slide of heroSlides; let i = index"
+              class="indicator"
+              [class.active]="i === currentSlide"
+              (click)="goToSlide(i)"
+              mat-button>
+        <span class="indicator-dot"></span>
       </button>
-      <p class="footer-note">
-        Over {{totalProductCount}}+ professional GPS tracking solutions available
-      </p>
     </div>
-  </div>
-</section>
+  </section>
 
-
-<!-- Enhanced CTA Section -->
-<section class="cta-section">
-  <div class="cta-container">
-    <div class="cta-content" [@fadeIn]>
-      <div class="cta-header">
-        <div class="cta-badge">
-          <mat-icon>military_tech</mat-icon>
-          <span>Trusted by Global Enterprises</span>
+  <!-- Featured Products Section -->
+  <section class="products-section">
+    <div class="section-container">
+      <div class="section-header" [@fadeIn]>
+        <div class="section-badge">
+          <mat-icon>security</mat-icon>
+          <span>Featured Products</span>
         </div>
-        <h2 class="cta-title">Ready to Secure Your Operations?</h2>
-        <p class="cta-description">
-          Join 8,500+ enterprises who depend on SEEWORLD's mission-critical GPS tracking solutions.
-          Our certified experts engineer custom solutions that meet the most demanding operational requirements
-          with military-grade security and enterprise-class reliability.
+        <h2 class="section-title">Enterprise GPS Tracking Solutions</h2>
+        <p class="section-description">
+          Military-grade GPS tracking solutions engineered for mission-critical operations.
+          Our enterprise platforms deliver uncompromising reliability, advanced security,
+          and comprehensive analytics trusted by industry leaders worldwide.
         </p>
       </div>
 
-      <div class="enterprise-stats">
-        <div class="enterprise-stat">
-          <div class="stat-number">8,500+</div>
-          <div class="stat-label">Enterprise Clients</div>
-        </div>
-        <div class="enterprise-stat">
-          <div class="stat-number">99.99%</div>
-          <div class="stat-label">Mission Uptime</div>
-        </div>
-        <div class="enterprise-stat">
-          <div class="stat-number">24/7</div>
-          <div class="stat-label">Expert Support</div>
-        </div>
-        <div class="enterprise-stat">
-          <div class="stat-number">45+</div>
-          <div class="stat-label">Countries</div>
+      <div class="products-grid" [@staggerCards]>
+        <div class="product-card" 
+             *ngFor="let product of featuredProducts"
+             (click)="navigateToProduct(product.id)">
+          
+          <div class="product-image-container">
+            <img 
+              [src]="product.imageUrl || getDefaultImage(product.category)" 
+              [alt]="product.name"
+              loading="lazy"
+              (error)="onImageError($event)">
+            
+            <div class="product-badges">
+              <div class="price-badge">
+                <span class="currency">$</span>
+                <span class="amount">{{product.price}}</span>
+              </div>
+              <div class="stock-badge" 
+                   [class.low-stock]="product.stock < 10 && product.stock > 0" 
+                   [class.out-of-stock]="product.stock === 0">
+                <mat-icon>{{getStockIcon(product.stock)}}</mat-icon>
+                <span>{{getStockText(product.stock)}}</span>
+              </div>
+              <div class="new-badge" *ngIf="isNewProduct(product)">
+                <mat-icon>fiber_new</mat-icon>
+                <span>New</span>
+              </div>
+            </div>
+
+            <button 
+              mat-icon-button 
+              class="wishlist-btn"
+              (click)="toggleWishlist(product, $event)"
+              [class.active]="isInWishlist(product.id)"
+              [class.loading]="wishlistLoading === product.id"
+              [disabled]="wishlistLoading === product.id"
+              [matTooltip]="isInWishlist(product.id) ? 'Remove from Wishlist' : 'Add to Wishlist'">
+              
+              <mat-spinner 
+                *ngIf="wishlistLoading === product.id" 
+                diameter="20" 
+                class="wishlist-spinner">
+              </mat-spinner>
+              <mat-icon *ngIf="wishlistLoading !== product.id">
+                {{isInWishlist(product.id) ? 'favorite' : 'favorite_border'}}
+              </mat-icon>
+            </button>
+          </div>
+
+          <div class="product-content">
+            <h3 class="product-title">{{product.name}}</h3>
+            <p class="product-description">{{product.description}}</p>
+
+            <div class="product-features" *ngIf="product.features && product.features.length > 0">
+              <div class="feature-item" *ngFor="let feature of product.features.slice(0, 3)">
+                <mat-icon>check_circle</mat-icon>
+                <span>{{feature}}</span>
+              </div>
+            </div>
+
+            <div class="product-rating" *ngIf="product.rating">
+              <div class="stars">
+                <mat-icon *ngFor="let star of getStarArray(product.rating)" class="star">star</mat-icon>
+                <mat-icon *ngFor="let star of getEmptyStarArray(product.rating)" class="star empty">star_border</mat-icon>
+              </div>
+              <span class="rating-text">{{product.rating}}/5 ({{product.reviewCount || 0}} reviews)</span>
+            </div>
+          </div>
+
+          <div class="product-actions">
+            <button 
+              mat-raised-button 
+              color="primary" 
+              class="add-to-cart-btn"
+              [disabled]="product.stock === 0 || addingToCart === product.id"
+              (click)="addToCart(product, $event)">
+              
+              <mat-spinner 
+                *ngIf="addingToCart === product.id" 
+                diameter="16" 
+                class="button-spinner">
+              </mat-spinner>
+              <mat-icon *ngIf="addingToCart !== product.id">
+                {{product.stock === 0 ? 'block' : 'add_shopping_cart'}}
+              </mat-icon>
+              <span>{{getAddToCartText(product)}}</span>
+            </button>
+            
+            <button 
+              mat-button 
+              color="primary" 
+              class="details-btn"
+              (click)="navigateToProduct(product.id, $event)">
+              <span>View Details</span>
+              <mat-icon>arrow_forward</mat-icon>
+            </button>
+          </div>
         </div>
       </div>
 
-      <div class="cta-actions">
-        <button mat-raised-button color="primary" class="cta-primary"
-                (click)="navigateTo('/contact')">
-          <mat-icon>engineering</mat-icon>
-          Schedule Expert Consultation
+      <div class="section-footer">
+        <button mat-raised-button color="primary" class="view-all-btn"
+                (click)="navigateTo('/products')">
+          <mat-icon>inventory</mat-icon>
+          View All Products
         </button>
-        <button mat-stroked-button color="primary" class="cta-secondary"
-                (click)="navigateTo('/demo')">
-          <mat-icon>science</mat-icon>
-          Request Technical Demo
-        </button>
+        <p class="footer-note">
+          Over {{totalProductCount}}+ professional GPS tracking solutions available
+        </p>
       </div>
+    </div>
+  </section>
 
-      <div class="trust-indicators">
-        <div class="trust-section">
-          <h4 class="trust-title">Certifications & Compliance</h4>
-          <div class="trust-items">
-            <div class="trust-item">
-              <mat-icon>security</mat-icon>
-              <span>ISO 27001 Certified</span>
-            </div>
-            <div class="trust-item">
-              <mat-icon>verified_user</mat-icon>
-              <span>GDPR Compliant</span>
-            </div>
-            <div class="trust-item">
-              <mat-icon>shield</mat-icon>
-              <span>SOC 2 Type II</span>
-            </div>
+  <!-- Enhanced CTA Section -->
+  <section class="cta-section">
+    <div class="cta-container">
+      <div class="cta-content" [@fadeIn]>
+        <div class="cta-header">
+          <div class="cta-badge">
+            <mat-icon>military_tech</mat-icon>
+            <span>Trusted by Global Enterprises</span>
+          </div>
+          <h2 class="cta-title">Ready to Secure Your Operations?</h2>
+          <p class="cta-description">
+            Join 8,500+ enterprises who depend on SEEWORLD's mission-critical GPS tracking solutions.
+            Our certified experts engineer custom solutions that meet the most demanding operational requirements
+            with military-grade security and enterprise-class reliability.
+          </p>
+        </div>
+
+        <div class="enterprise-stats">
+          <div class="enterprise-stat">
+            <div class="stat-number">8,500+</div>
+            <div class="stat-label">Enterprise Clients</div>
+          </div>
+          <div class="enterprise-stat">
+            <div class="stat-number">99.99%</div>
+            <div class="stat-label">Mission Uptime</div>
+          </div>
+          <div class="enterprise-stat">
+            <div class="stat-number">24/7</div>
+            <div class="stat-label">Expert Support</div>
+          </div>
+          <div class="enterprise-stat">
+            <div class="stat-number">45+</div>
+            <div class="stat-label">Countries</div>
           </div>
         </div>
 
-        <div class="trust-section">
-          <h4 class="trust-title">Enterprise Support</h4>
-          <div class="trust-items">
-            <div class="trust-item">
-              <mat-icon>support_agent</mat-icon>
-              <span>24/7 Technical Support</span>
+        <div class="cta-actions">
+          <button mat-raised-button color="primary" class="cta-primary"
+                  (click)="navigateTo('/contact')">
+            <mat-icon>engineering</mat-icon>
+            Schedule Expert Consultation
+          </button>
+          <button mat-stroked-button color="primary" class="cta-secondary"
+                  (click)="navigateTo('/demo')">
+            <mat-icon>science</mat-icon>
+            Request Technical Demo
+          </button>
+        </div>
+
+        <div class="trust-indicators">
+          <div class="trust-section">
+            <h4 class="trust-title">Certifications & Compliance</h4>
+            <div class="trust-items">
+              <div class="trust-item">
+                <mat-icon>security</mat-icon>
+                <span>ISO 27001 Certified</span>
+              </div>
+              <div class="trust-item">
+                <mat-icon>verified_user</mat-icon>
+                <span>GDPR Compliant</span>
+              </div>
+              <div class="trust-item">
+                <mat-icon>shield</mat-icon>
+                <span>SOC 2 Type II</span>
+              </div>
             </div>
-            <div class="trust-item">
-              <mat-icon>business_center</mat-icon>
-              <span>Dedicated Account Manager</span>
-            </div>
-            <div class="trust-item">
-              <mat-icon>school</mat-icon>
-              <span>Professional Training</span>
+          </div>
+
+          <div class="trust-section">
+            <h4 class="trust-title">Enterprise Support</h4>
+            <div class="trust-items">
+              <div class="trust-item">
+                <mat-icon>support_agent</mat-icon>
+                <span>24/7 Technical Support</span>
+              </div>
+              <div class="trust-item">
+                <mat-icon>business_center</mat-icon>
+                <span>Dedicated Account Manager</span>
+              </div>
+              <div class="trust-item">
+                <mat-icon>school</mat-icon>
+                <span>Professional Training</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
-</section>
+  </section>
+</div>

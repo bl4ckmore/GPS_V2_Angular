@@ -1,3 +1,4 @@
+// app.module.ts
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
@@ -20,8 +21,7 @@ import { ProductListComponent } from './pages/product-list/product-list.componen
 import { ProductDetailComponent } from './pages/product-detail/product-detail.component';
 import { SignInComponent } from './pages/sign-in/sign-in.component';
 
-// Material Design Modules - Import MatBadgeModule from correct location
-import { MatBadgeModule } from '@angular/material/badge';
+// Material Design Modules
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -35,6 +35,7 @@ import { MatRippleModule } from '@angular/material/core';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTableModule } from '@angular/material/table';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatBadgeModule } from '@angular/material/badge';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSliderModule } from '@angular/material/slider';
@@ -60,6 +61,7 @@ import { AuthService } from './core/auth/auth.service';
 import { ProductService } from './services/product.service';
 import { CartService } from './services/cart.service';
 import { UserService } from './services/user.service';
+import { WishlistService } from './services/wishlist.service';
 
 // Environment
 import { environment } from '../environments/environment';
@@ -85,8 +87,7 @@ import { environment } from '../environments/environment';
     ReactiveFormsModule,
     AppRoutingModule,
 
-    // Material Design Components - MatBadgeModule MUST be here
-    MatBadgeModule,
+    // Material Design Components
     MatToolbarModule,
     MatIconModule,
     MatFormFieldModule,
@@ -100,6 +101,7 @@ import { environment } from '../environments/environment';
     MatSnackBarModule,
     MatTableModule,
     MatCheckboxModule,
+    MatBadgeModule,
     MatDialogModule,
     MatSelectModule,
     MatSliderModule,
@@ -135,7 +137,8 @@ import { environment } from '../environments/environment';
     AuthService,
     ProductService,
     CartService,
-    UserService
+    UserService,
+    WishlistService
   ],
   bootstrap: [AppComponent]
 })
@@ -145,6 +148,7 @@ export class AppModule {
     if (!environment.production) {
       console.log('SEEWORLD GPS E-commerce App - Development Mode');
       console.log('API URL:', environment.EC_API_BASE);
+      console.log('Features: Product List, Cart, Wishlist, Authentication');
     }
   }
 }

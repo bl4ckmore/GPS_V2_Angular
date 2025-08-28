@@ -1,37 +1,17 @@
+// home.component.ts
 import { Component, OnInit, OnDestroy, HostListener } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { Subject, takeUntil } from 'rxjs';
 import {
   trigger, style, transition, animate, query, stagger
 } from '@angular/animations';
+
+// Import services
 import { AuthService } from '../../core/auth/auth.service';
-import { ProductService } from '../../services/product.service';
+import { ProductService, Product } from '../../services/product.service';
 import { CartService } from '../../services/cart.service';
-
-interface Product {
-  id: number;
-  name: string;
-  description: string;
-  price: number;
-  imageUrl: string;
-  category: string;
-  stock: number;
-  features?: string[];
-  rating?: number;
-  reviewCount?: number;
-  isActive: boolean;
-  createdAt: Date;
-}
-
-interface ProductCategory {
-  id: number;
-  name: string;
-  description: string;
-  slug: string;
-  icon: string;
-  productCount: number;
-  priceFrom: number;
-}
+import { WishlistService } from '../../services/wishlist.service';
 
 interface HeroSlide {
   title: string;
@@ -86,11 +66,14 @@ interface NavigationOption {
   ]
 })
 export class HomeComponent implements OnInit, OnDestroy {
+  private destroy$ = new Subject<void>();
+
   constructor(
     public auth: AuthService,
     private router: Router,
     private productService: ProductService,
     private cartService: CartService,
+    private wishlistService: WishlistService,
     private snackBar: MatSnackBar
   ) {}
 
@@ -101,12 +84,17 @@ export class HomeComponent implements OnInit, OnDestroy {
   slideInterval = 8000;
   isMobile = false;
   cartItemCount = 0;
+  wishlistItemCount = 0;
   totalProductCount = 0;
   private slideTimer: any;
 
+  // UI State
+  addingToCart: number | null = null;
+  wishlistLoading: number | null = null;
+  wishlistItems: Set<number> = new Set();
+
   // --- Data ---
   featuredProducts: Product[] = [];
-  productCategories: ProductCategory[] = [];
 
   // --- Hero slides ---
   heroSlides: HeroSlide[] = [
@@ -184,25 +172,22 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.checkIfMobile();
     this.initializeData();
     this.startAutoSlide();
-    this.subscribeToCartUpdates();
+    this.subscribeToServices();
   }
 
   ngOnDestroy(): void {
     if (this.slideTimer) clearInterval(this.slideTimer);
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   private async initializeData(): Promise<void> {
     this.loading = true;
     try {
-      // Load featured products
-      await this.loadFeaturedProducts();
-      
-      // Load product categories
-      await this.loadProductCategories();
-      
-      // Get total product count
-      this.totalProductCount = await this.productService.getTotalProductCount();
-      
+      await Promise.all([
+        this.loadFeaturedProducts(),
+        this.loadProductCount()
+      ]);
     } catch (error) {
       console.error('Error loading home page data:', error);
       this.snackBar.open('Some content may not be up to date.', 'Close', {
@@ -221,18 +206,30 @@ export class HomeComponent implements OnInit, OnDestroy {
     }
   }
 
-  private async loadProductCategories(): Promise<void> {
+  private async loadProductCount(): Promise<void> {
     try {
-      this.productCategories = await this.productService.getProductCategories();
+      this.totalProductCount = await this.productService.getTotalProductCount();
     } catch (error) {
-      console.error('Error loading product categories:', error);
+      console.error('Error loading product count:', error);
+      this.totalProductCount = 47; // Fallback
     }
   }
 
-  private subscribeToCartUpdates(): void {
-    this.cartService.cartItemCount$.subscribe(count => {
-      this.cartItemCount = count;
-    });
+  private subscribeToServices(): void {
+    // Subscribe to cart updates
+    this.cartService.cartItemCount$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(count => {
+        this.cartItemCount = count;
+      });
+
+    // Subscribe to wishlist updates
+    this.wishlistService.wishlistItems$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(items => {
+        this.wishlistItems = new Set(items.map(item => item.productId));
+        this.wishlistItemCount = items.length;
+      });
   }
 
   // ===== Responsive =====
@@ -283,8 +280,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const isLoggedIn = this.auth.isLoggedIn$.value;
-    if (!isLoggedIn) {
+    if (!this.auth.isLoggedIn$.value) {
       this.snackBar.open('Please sign in to add items to cart', 'Sign In', {
         duration: 5000
       }).onAction().subscribe(() => {
@@ -292,6 +288,8 @@ export class HomeComponent implements OnInit, OnDestroy {
       });
       return;
     }
+
+    this.addingToCart = product.id;
 
     try {
       await this.cartService.addToCart(product.id, 1);
@@ -301,18 +299,65 @@ export class HomeComponent implements OnInit, OnDestroy {
       }).onAction().subscribe(() => {
         this.navigateTo('/cart');
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding to cart:', error);
       this.snackBar.open('Failed to add item to cart', 'Close', {
         duration: 3000,
         panelClass: ['error-snackbar']
       });
+    } finally {
+      this.addingToCart = null;
     }
   }
 
-  performSearch(query: string): void {
-    if (!query.trim()) return;
-    this.navigateTo(`/products?search=${encodeURIComponent(query)}`);
+  // ===== Wishlist Actions =====
+  async toggleWishlist(product: Product, event: Event): Promise<void> {
+    event.stopPropagation();
+
+    if (!this.auth.isLoggedIn$.value) {
+      this.snackBar.open('Please sign in to use wishlist', 'Sign In', {
+        duration: 3000
+      }).onAction().subscribe(() => {
+        this.router.navigate(['/sign-in']);
+      });
+      return;
+    }
+
+    this.wishlistLoading = product.id;
+
+    try {
+      if (this.wishlistItems.has(product.id)) {
+        await this.wishlistService.removeFromWishlist(product.id);
+        this.snackBar.open(`${product.name} removed from wishlist`, 'Close', { 
+          duration: 2000,
+          panelClass: ['success-snackbar']
+        });
+      } else {
+        await this.wishlistService.addToWishlist(product.id);
+        this.snackBar.open(`${product.name} added to wishlist`, 'View Wishlist', {
+          duration: 3000,
+          panelClass: ['success-snackbar']
+        }).onAction().subscribe(() => {
+          this.router.navigate(['/wishlist']);
+        });
+      }
+    } catch (error: any) {
+      console.error('Error updating wishlist:', error);
+      this.snackBar.open(
+        error.message || 'Failed to update wishlist', 
+        'Close', 
+        {
+          duration: 3000,
+          panelClass: ['error-snackbar']
+        }
+      );
+    } finally {
+      this.wishlistLoading = null;
+    }
+  }
+
+  isInWishlist(productId: number): boolean {
+    return this.wishlistItems.has(productId);
   }
 
   // ===== Navigation helpers =====
@@ -326,17 +371,59 @@ export class HomeComponent implements OnInit, OnDestroy {
     }
   }
 
+  navigateToProduct(productId: number, event?: Event): void {
+    if (event) {
+      event.stopPropagation();
+    }
+    this.router.navigate(['/products', productId]);
+  }
+
   // ===== Utility Methods =====
   getStarArray(rating: number): number[] {
     return Array(Math.floor(rating)).fill(0);
   }
 
-  getProductIcon(productTitle: string): string {
-    const t = (productTitle || '').toLowerCase();
-    if (t.includes('fleet')) return 'local_shipping';
-    if (t.includes('obd')) return 'settings';
-    if (t.includes('asset')) return 'security';
-    if (t.includes('personal')) return 'person_pin_circle';
-    return 'gps_fixed';
+  getEmptyStarArray(rating: number): number[] {
+    const emptyStars = 5 - Math.floor(rating);
+    return Array(emptyStars).fill(0);
+  }
+
+  getStockIcon(stock: number): string {
+    if (stock === 0) return 'error';
+    if (stock < 10) return 'warning';
+    return 'check_circle';
+  }
+
+  getStockText(stock: number): string {
+    if (stock === 0) return 'Out of Stock';
+    if (stock < 10) return `${stock} Left`;
+    return 'In Stock';
+  }
+
+  getAddToCartText(product: Product): string {
+    if (this.addingToCart === product.id) return 'Adding...';
+    if (product.stock === 0) return 'Out of Stock';
+    return 'Add to Cart';
+  }
+
+  isNewProduct(product: Product): boolean {
+    const oneMonthAgo = new Date();
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+    return new Date(product.createdAt) > oneMonthAgo;
+  }
+
+  getDefaultImage(category: string): string {
+    const imageMap: { [key: string]: string } = {
+      fleet: '/assets/images/default-fleet-tracker.jpg',
+      obd: '/assets/images/default-obd-tracker.jpg',
+      asset: '/assets/images/default-asset-tracker.jpg',
+      personal: '/assets/images/default-personal-tracker.jpg'
+    };
+    return imageMap[category] || '/assets/images/default-gps-tracker.jpg';
+  }
+
+  onImageError(event: Event): void {
+    const img = event.target as HTMLImageElement;
+    img.src = '/assets/images/default-gps-tracker.jpg';
   }
 }
