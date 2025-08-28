@@ -28,24 +28,9 @@
           </mat-menu>
         </div>
 
-        <div class="nav-item dropdown" [matMenuTriggerFor]="solutionsMenu">
-          <button mat-button class="nav-button">
-            Solutions
-            <mat-icon>keyboard_arrow_down</mat-icon>
-          </button>
-          <mat-menu #solutionsMenu="matMenu" class="dropdown-menu">
-            <a mat-menu-item *ngFor="let option of solutionsOptions"
-               (click)="navigateTo(option.link)">
-              <mat-icon>{{option.icon}}</mat-icon>
-              <span>{{option.name}}</span>
-            </a>
-          </mat-menu>
-        </div>
+      
 
-        <button mat-button class="nav-button" (click)="navigateTo('/about')">
-          <mat-icon>info</mat-icon>
-          About
-        </button>
+       
       </nav>
 
       <div class="nav-actions">
